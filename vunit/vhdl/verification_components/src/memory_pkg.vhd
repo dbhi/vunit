@@ -24,6 +24,7 @@ package memory_pkg is
   -- Memory model object
   type memory_t is record
     -- Private
+    p_id: integer;
     p_meta : integer_vector_ptr_t;
     p_default_endian : endianness_t;
     p_check_permissions : boolean;
@@ -31,7 +32,8 @@ package memory_pkg is
     p_buffers : integer_vector_ptr_t;
     p_logger : logger_t;
   end record;
-  constant null_memory : memory_t := (p_logger => null_logger,
+  constant null_memory : memory_t := (p_id => 0,
+                                      p_logger => null_logger,
                                       p_check_permissions => boolean'low,
                                       p_default_endian => endianness_t'low,
                                       others => null_ptr);
@@ -40,7 +42,8 @@ package memory_pkg is
   constant memory_logger : logger_t := get_logger("vunit_lib:memory_pkg");
 
   -- Create a new memory object
-  impure function new_memory(logger : logger_t := memory_logger;
+  impure function new_memory(id : integer := -1;
+                             logger : logger_t := memory_logger;
                              endian : endianness_t := little_endian) return memory_t;
 
   -- Empties the memory by removing all data and permissions
@@ -50,8 +53,24 @@ package memory_pkg is
   impure function num_bytes(memory : memory_t) return natural;
 
   -----------------------------------------------------
+  -- External memory model
+  -----------------------------------------------------
+
+  procedure write_byte ( id, i, v: integer ) ;
+    attribute foreign of write_byte : procedure is "VHPIDIRECT write_byte";
+
+  impure function read_byte ( id, i: integer ) return integer;
+    attribute foreign of read_byte : function is "VHPIDIRECT read_byte";
+
+  -----------------------------------------------------
   -- Memory data read and write functions
   -----------------------------------------------------
+  impure function is_external(memory: memory_t) return boolean;
+
+  impure function get_byte(memory: memory_t;
+                           address: natural;
+                           perm: boolean := false) return integer;
+
   procedure write_byte(memory : memory_t;
                        address : natural;
                        byte : byte_t);
