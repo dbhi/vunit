@@ -11,12 +11,17 @@
 --
 
 use work.string_pkg.all;
+use work.external_string_pkg.all;
 
 use work.codec_pkg.all;
 use work.codec_builder_pkg.all;
 
 package string_ptr_pkg is
+
+  type storage_mode_t is (internal, extfnc, extacc);
+
   subtype index_t is integer range -1 to integer'high;
+
   type string_ptr_t is record
     ref : index_t;
   end record;
@@ -24,8 +29,11 @@ package string_ptr_pkg is
 
   alias  ptr_t  is string_ptr_t;
   alias  val_t  is character;
+  alias  vec_t  is string;
   alias  vav_t  is string_access_vector_t;
+  alias evav_t  is extstring_access_vector_t;
   alias  vava_t is string_access_vector_access_t;
+  alias evava_t is extstring_access_vector_access_t;
 
   function to_integer (
     value : ptr_t
@@ -36,12 +44,28 @@ package string_ptr_pkg is
   ) return ptr_t;
 
   impure function new_string_ptr (
-    length : natural := 0
+    length : natural := 0;
+    mode   : storage_mode_t := internal;
+    id     : integer := 0;
+    value  : val_t   := val_t'low
   ) return ptr_t;
 
   impure function new_string_ptr (
-    value : string
+    length : natural := 0;
+    mode   : storage_mode_t := internal;
+    id     : integer := 0;
+    value  : natural
   ) return ptr_t;
+
+  impure function new_string_ptr (
+    value : string;
+    mode  : storage_mode_t := internal;
+    id    : integer := 0
+  ) return ptr_t;
+
+  impure function is_external (
+    ptr : ptr_t
+  ) return boolean;
 
   procedure deallocate (
     ptr : ptr_t
@@ -53,29 +77,55 @@ package string_ptr_pkg is
 
   procedure set (
     ptr   : ptr_t;
-    index : natural;
-    value : val_t
+    index : positive := 1;
+    value : val_t    := val_t'low
+  );
+
+  procedure set (
+    ptr   : ptr_t;
+    index : positive := 1;
+    value : natural  := 0
   );
 
   impure function get (
     ptr   : ptr_t;
-    index : natural
+    index : positive := 1
   ) return val_t;
 
-  procedure reallocate (
-    ptr    : ptr_t;
-    length : natural
-  );
+  impure function get (
+    ptr   : ptr_t;
+    index : positive := 1
+  ) return natural;
 
   procedure reallocate (
     ptr   : ptr_t;
     value : string
   );
 
+  procedure reallocate (
+    ptr    : ptr_t;
+    length : natural;
+    value  : val_t := val_t'low
+  );
+
+  procedure reallocate (
+    ptr    : ptr_t;
+    length : natural;
+    value  : natural
+  );
+
   procedure resize (
     ptr    : ptr_t;
     length : natural;
-    drop   : natural := 0
+    drop   : natural := 0;
+    value  : val_t   := val_t'low
+  );
+
+  procedure resize (
+    ptr    : ptr_t;
+    length : natural;
+    drop   : natural := 0;
+    value  : natural
   );
 
   impure function to_string (

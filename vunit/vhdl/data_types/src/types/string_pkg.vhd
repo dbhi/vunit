@@ -8,4 +8,8 @@ package string_pkg is
   type string_access_t is access string;
   type string_access_vector_t is array (natural range <>) of string_access_t;
   type string_access_vector_access_t is access string_access_vector_t;
+
+  type extstring_access_t is access string(1 to integer'high);
+  type extstring_access_vector_t is array (natural range <>) of extstring_access_t;
+  type extstring_access_vector_access_t is access extstring_access_vector_t;
 end package;

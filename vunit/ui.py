@@ -118,7 +118,7 @@ The following simulation options are known.
   A list of PLI file names.
 
 ``ghdl.flags``
-   Extra arguments passed to ``ghdl --elab-run`` command *before* executable specific flags. Must be a list of strings.
+   Extra arguments passed to ``ghdl --elab-run`` command *before* executable specific flags.
    Must be a list of strings.
 
 ``incisive.irun_sim_flags``
@@ -290,12 +290,16 @@ class VUnit(object):  # pylint: disable=too-many-instance-attributes, too-many-p
     """
 
     @classmethod
-    def from_argv(cls, argv=None, compile_builtins=True, vhdl_standard=None):
+    def from_argv(cls, argv=None, compile_builtins=True, vhdl_standard=None, external=None):
         """
         Create VUnit instance from command line arguments.
 
         :param argv: Use explicit argv instead of actual command line argument
         :param compile_builtins: Do not compile builtins. Used for VUnit internal testing.
+        :param vhdl_standard: The VHDL standard used to compile files into this library,
+                              if None the VUNIT_VHDL_STANDARD environment variable is used
+        :param external: struct to select whether to enable external models for 'string'. Allowed values are:
+                         None, {'string': False}, {'string': True} or {'string': ['path/to/custom/file']}.
         :returns: A :class:`.VUnit` object instance
 
         :example:
@@ -307,10 +311,15 @@ class VUnit(object):  # pylint: disable=too-many-instance-attributes, too-many-p
 
         """
         args = VUnitCLI().parse_args(argv=argv)
-        return cls.from_args(args, compile_builtins=compile_builtins, vhdl_standard=vhdl_standard)
+        return cls.from_args(
+            args,
+            compile_builtins=compile_builtins,
+            vhdl_standard=vhdl_standard,
+            external=external
+        )
 
     @classmethod
-    def from_args(cls, args, compile_builtins=True, vhdl_standard=None):
+    def from_args(cls, args, compile_builtins=True, vhdl_standard=None, external=None):
         """
         Create VUnit instance from args namespace.
         Intended for users who adds custom command line options.
@@ -319,12 +328,21 @@ class VUnit(object):  # pylint: disable=too-many-instance-attributes, too-many-p
 
         :param args: The parsed argument namespace object
         :param compile_builtins: Do not compile builtins. Used for VUnit internal testing.
+        :param vhdl_standard: The VHDL standard used to compile files into this library,
+                              if None the VUNIT_VHDL_STANDARD environment variable is used
+        :param external: struct to select whether to enable external models for 'string'. Allowed values are:
+                         None, {'string': False}, {'string': True} or {'string': ['path/to/custom/file']}.
         :returns: A :class:`.VUnit` object instance
+
         """
+        return cls(
+            args,
+            compile_builtins=compile_builtins,
+            vhdl_standard=vhdl_standard,
+            external=external
+        )
 
-        return cls(args, compile_builtins=compile_builtins, vhdl_standard=vhdl_standard)
-
-    def __init__(self, args, compile_builtins=True, vhdl_standard=None):
+    def __init__(self, args, compile_builtins=True, vhdl_standard=None, external=None):
         self._args = args
         self._configure_logging(args.log_level)
         self._output_path = abspath(args.output_path)
@@ -371,8 +389,9 @@ class VUnit(object):  # pylint: disable=too-many-instance-attributes, too-many-p
         self._test_bench_list = TestBenchList(database=database)
 
         self._builtins = Builtins(self, self._vhdl_standard, simulator_class)
+        self._compile_builtins = compile_builtins
         if compile_builtins:
-            self.add_builtins()
+            self.add_builtins(external=external)
 
     def _create_database(self):
         """
@@ -858,7 +877,6 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         """
         Base vunit main function without performing exit
         """
-
         if self._args.export_json is not None:
             return self._main_export_json(self._args.export_json)
 
@@ -1056,11 +1074,14 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
                             no_color=self._args.no_color)
         runner.run(test_cases)
 
-    def add_builtins(self):
+    def add_builtins(self, external=None):
         """
         Add vunit VHDL builtin libraries
+
+        :param external: struct to select whether to enable external models for 'string'. Allowed values are:
+                         None, {'string': False}, {'string': True} or {'string': ['path/to/custom/file']}.
         """
-        self._builtins.add_vhdl_builtins()
+        self._builtins.add_vhdl_builtins(external=external)
 
     def add_com(self):
         """
