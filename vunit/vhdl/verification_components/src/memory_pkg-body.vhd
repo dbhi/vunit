@@ -20,32 +20,41 @@ package body memory_pkg is
     perm : permissions_t;
   end record;
 
-  impure function new_memory(logger : logger_t := memory_logger;
-                             endian : endianness_t := little_endian) return memory_t is
+  impure function
+  new_memory(
+    id     : integer := 0;
+    length : natural := 0;
+    logger : logger_t := memory_logger;
+    endian : endianness_t := little_endian
+  ) return memory_t is
     constant p_meta : integer_vector_ptr_t := new_integer_vector_ptr(num_meta);
   begin
     set(p_meta, num_bytes_idx, 0);
     set(p_meta, num_buffers_idx, 0);
-
     return (p_meta => p_meta,
             p_default_endian => endian,
             p_check_permissions => false,
-            p_data => new_integer_vector_ptr(0),
+            p_data => new_integer_vector_ptr(len => length, id => id),
             p_buffers => new_integer_vector_ptr(0),
             p_logger => logger);
   end;
 
-  procedure clear(memory : memory_t) is
-  begin
+  procedure
+  clear(
+    memory : memory_t
+  ) is begin
     assert memory /= null_memory;
     set(memory.p_meta, num_bytes_idx, 0);
     set(memory.p_meta, num_buffers_idx, 0);
     reallocate(memory.p_data, 0);
     reallocate(memory.p_buffers, 0);
-  end procedure;
+  end;
 
-  impure function evaluate_endian(memory : memory_t; endian : endianness_arg_t) return endianness_t is
-  begin
+  impure function
+  evaluate_endian(
+    memory : memory_t;
+    endian : endianness_arg_t
+  ) return endianness_t is begin
     if endian = default_endian then
       return memory.p_default_endian;
     else
@@ -53,15 +62,28 @@ package body memory_pkg is
     end if;
   end;
 
-  impure function decode(value : integer) return memory_data_t is
-  begin
+  impure function
+  decode(
+    value : integer
+  ) return memory_data_t is begin
     return (byte => value mod 256,
             exp => (value/256) mod 256,
             has_exp => (value/256**2) mod 2 = 1,
             perm => permissions_t'val((value/(2*256**2)) mod 256));
   end;
 
-  impure function encode(memory_data : memory_data_t) return integer is
+  impure function
+  decode(
+    memory  : memory_t;
+    address : natural
+  ) return memory_data_t is begin
+    return decode(get_byte(memory, address));
+  end;
+
+  impure function
+  encode(
+    memory_data : memory_data_t
+  ) return integer is
     variable result : integer;
   begin
     result := (memory_data.byte +
@@ -73,11 +95,14 @@ package body memory_pkg is
     return result;
   end;
 
-  impure function allocate(memory : memory_t;
-                           num_bytes : natural;
-                           name : string := "";
-                           alignment : positive := 1;
-                           permissions : permissions_t := read_and_write) return buffer_t is
+  impure function
+  allocate(
+    memory      : memory_t;
+    num_bytes   : natural;
+    name        : string := "";
+    alignment   : positive := 1;
+    permissions : permissions_t := read_and_write
+  ) return buffer_t is
     variable buf : buffer_t;
     variable num_buffers : natural;
   begin
@@ -110,29 +135,41 @@ package body memory_pkg is
       set(memory.p_data, buf.p_address + i, encode((byte => 0, exp => 0, has_exp => false, perm => permissions)));
     end loop;
     return buf;
-  end function;
+  end;
 
-  impure function name(buf : buffer_t) return string is
-  begin
+  impure function
+  name(
+    buf : buffer_t
+  ) return string is begin
     return to_string(buf.p_name);
-  end function;
+  end;
 
-  impure function base_address(buf : buffer_t) return natural is
-  begin
+  impure function
+  base_address(
+    buf : buffer_t
+  ) return natural is begin
     return buf.p_address;
-  end function;
+  end;
 
-  impure function last_address(buf : buffer_t) return natural is
-  begin
+  impure function
+  last_address(
+    buf : buffer_t
+  ) return natural is begin
     return buf.p_address + num_bytes(buf) - 1;
-  end function;
+  end;
 
-  impure function num_bytes(buf : buffer_t) return natural is
-  begin
+  impure function
+  num_bytes(
+    buf : buffer_t
+  ) return natural is begin
     return buf.p_num_bytes;
-  end function;
+  end;
 
-  impure function address_to_allocation(memory : memory_t; address : natural) return buffer_t is
+  impure function
+  address_to_allocation(
+    memory  : memory_t;
+    address : natural
+  ) return buffer_t is
     variable buf : buffer_t;
   begin
     -- @TODO use bisection for speedup
@@ -152,31 +189,37 @@ package body memory_pkg is
     return null_buffer;
   end;
 
-  impure function check_write_data(memory : memory_t;
-                                   address : natural;
-                                   byte : byte_t) return boolean is
-    constant memory_data : memory_data_t := decode(get(memory.p_data, address));
+  impure function
+  check_write_data(
+    memory  : memory_t;
+    address : natural;
+    byte    : byte_t
+  ) return boolean is
+    constant memory_data : memory_data_t := decode(memory, address);
   begin
     if memory_data.has_exp and byte /= memory_data.exp then
       failure(memory.p_logger, "Writing to " & describe_address(memory, address) &
               ". Got " & to_string(byte) & " expected " & to_string(memory_data.exp));
       return false;
     end if;
-
     return true;
   end;
 
-  impure function check_address(memory : memory_t; address : natural;
-                                reading : boolean;
-                                check_permissions : boolean := false) return boolean is
-    impure function verb return string is
-    begin
+  impure function
+  check_address(
+    memory            : memory_t;
+    address           : natural;
+    reading           : boolean;
+    check_permissions : boolean := false
+  ) return boolean is
+
+    impure function verb return string is begin
       if reading then
         return "Reading from";
       else
         return "Writing to";
       end if;
-    end function;
+    end;
 
   begin
     if length(memory.p_data) = 0 then
@@ -185,44 +228,78 @@ package body memory_pkg is
     elsif address >= length(memory.p_data) then
       failure(memory.p_logger, verb & " address " & to_string(address) & " out of range 0 to " & to_string(length(memory.p_data)-1));
       return false;
-    elsif check_permissions and get_permissions(memory, address) = no_access then
-      failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (no_access)");
-      return false;
-    elsif check_permissions and reading and get_permissions(memory, address) = write_only then
-      failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (write_only)");
-      return false;
-    elsif check_permissions and not reading and get_permissions(memory, address) = read_only then
-      failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (read_only)");
-      return false;
+    end if;
+    -- @FIXME These checks are not implemented for external memories.
+    if not is_external(memory.p_data) then
+      if check_permissions and get_permissions(memory, address) = no_access then
+        failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (no_access)");
+        return false;
+      elsif check_permissions and reading and get_permissions(memory, address) = write_only then
+        failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (write_only)");
+        return false;
+      elsif check_permissions and not reading and get_permissions(memory, address) = read_only then
+        failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (read_only)");
+        return false;
+      end if;
     end if;
     return true;
   end;
 
-  impure function get(memory : memory_t;
-                      address : natural;
-                      reading : boolean;
-                      check_permissions : boolean := false) return memory_data_t is
-  begin
+  impure function
+  get(
+    memory  : memory_t;
+    address : natural;
+    reading : boolean;
+    check_permissions : boolean := false
+  ) return memory_data_t is begin
     if not check_address(memory, address, reading, check_permissions) then
       return decode(0);
     end if;
-    return decode(get(memory.p_data, address));
+    return decode(memory, address);
   end;
 
-  impure function num_bytes(memory : memory_t) return natural is
-  begin
+  impure function
+  num_bytes(
+    memory : memory_t
+  ) return natural is begin
     return get(memory.p_meta, num_bytes_idx);
   end;
 
-  procedure write_byte_unchecked(memory : memory_t; address : natural; byte : byte_t) is
-    variable old : memory_data_t;
-  begin
-    old := decode(get(memory.p_data, address));
-    set(memory.p_data, address, encode((byte => byte, exp => old.exp, has_exp => old.has_exp, perm => old.perm)));
+  impure function
+  get_byte(
+    memory  : memory_t;
+    address : natural;
+    perm    : boolean := false
+  ) return integer is begin
+    if is_external(memory.p_data) or not perm  then
+      return get(memory.p_data, address);
+    else
+      return integer(get(memory, address, true, memory.p_check_permissions).byte);
+    end if;
   end;
 
-  procedure write_byte(memory : memory_t; address : natural; byte : byte_t) is
+  procedure
+  write_byte_unchecked(
+    memory  : memory_t;
+    address : natural;
+    byte    : byte_t
+  ) is
+    variable old : memory_data_t;
   begin
+    if is_external(memory.p_data) then
+      set(memory.p_data, address, byte);
+    else
+      old := decode(memory, address);
+      set(memory.p_data, address, encode((byte => byte, exp => old.exp, has_exp => old.has_exp, perm => old.perm)));
+    end if;
+  end;
+
+  procedure
+  write_byte(
+    memory : memory_t;
+    address : natural;
+    byte : byte_t
+  ) is begin
     if not check_address(memory, address, false, memory.p_check_permissions) then
       return;
     end if;
@@ -233,30 +310,41 @@ package body memory_pkg is
     write_byte_unchecked(memory, address, byte);
   end;
 
-  impure function read_byte(memory : memory_t; address : natural) return byte_t is
-  begin
-    return get(memory, address, true, memory.p_check_permissions).byte;
+  impure function
+  read_byte(
+    memory : memory_t;
+    address : natural
+  ) return byte_t is begin
+    return byte_t(get_byte(memory, address, true));
   end;
 
-  procedure check_expected_was_written(memory : memory_t; address : natural; num_bytes : natural) is
+  procedure
+  check_expected_was_written(
+    memory    : memory_t;
+    address   : natural;
+    num_bytes : natural
+  ) is
     variable memory_data : memory_data_t;
   begin
     for addr in address to address + num_bytes - 1 loop
-      memory_data := decode(get(memory.p_data, addr));
+      memory_data := decode(memory, addr);
       if memory_data.has_exp and memory_data.byte /= memory_data.exp then
         failure(memory.p_logger, "The " & describe_address(memory, addr) &
                 " was never written with expected byte " & to_string(memory_data.exp));
       end if;
     end loop;
-  end procedure;
+  end;
 
-  impure function expected_was_written(memory    : memory_t;
-                                       address   : natural;
-                                       num_bytes : natural) return boolean is
+  impure function
+  expected_was_written(
+    memory    : memory_t;
+    address   : natural;
+    num_bytes : natural
+  ) return boolean is
     variable memory_data : memory_data_t;
   begin
     for addr in address to address + num_bytes - 1 loop
-      memory_data := decode(get(memory.p_data, addr));
+      memory_data := decode(memory, addr);
       if memory_data.has_exp and memory_data.byte /= memory_data.exp then
         return false;
       end if;
@@ -265,75 +353,110 @@ package body memory_pkg is
     return true;
   end;
 
-  procedure check_expected_was_written(buf : buffer_t) is
-  begin
+  procedure
+  check_expected_was_written(
+    buf : buffer_t
+  ) is begin
     check_expected_was_written(buf.p_memory_ref, base_address(buf), num_bytes(buf));
-  end procedure;
+  end;
 
-  impure function expected_was_written(buf : buffer_t) return boolean is
-  begin
+  impure function
+  expected_was_written(
+    buf : buffer_t
+  ) return boolean is begin
     return expected_was_written(buf.p_memory_ref, base_address(buf), num_bytes(buf));
   end;
 
-  procedure check_expected_was_written(memory : memory_t) is
-  begin
+  procedure
+  check_expected_was_written(
+    memory : memory_t
+  ) is begin
     check_expected_was_written(memory, 0, num_bytes(memory));
-  end procedure;
+  end;
 
-  impure function expected_was_written(memory : memory_t) return boolean is
-  begin
+  impure function
+  expected_was_written(
+    memory : memory_t
+  ) return boolean is begin
     return expected_was_written(memory, 0, num_bytes(memory));
   end;
 
-  impure function get_permissions(memory : memory_t; address : natural) return permissions_t is
-  begin
+  impure function
+  get_permissions(
+    memory  : memory_t;
+    address : natural
+  ) return permissions_t is begin
     return get(memory, address, true).perm;
   end;
 
-  procedure set_permissions(memory : memory_t; address : natural; permissions : permissions_t) is
+  procedure
+  set_permissions(
+    memory      : memory_t;
+    address     : natural;
+    permissions : permissions_t
+  ) is
     variable old : memory_data_t;
   begin
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
+    old := decode(memory, address);
     set(memory.p_data, address, encode((byte => old.byte, exp => old.exp, has_exp => old.has_exp, perm => permissions)));
-  end procedure;
+  end;
 
-  impure function has_expected_byte(memory : memory_t; address : natural) return boolean is
-  begin
+  impure function
+  has_expected_byte(
+    memory  : memory_t;
+    address : natural
+  ) return boolean is begin
     return get(memory, address, true).has_exp;
   end;
 
-  procedure clear_expected_byte(memory : memory_t; address : natural) is
+  procedure
+  clear_expected_byte(
+    memory  : memory_t;
+    address : natural
+  ) is
     variable old : memory_data_t;
   begin
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
+    old := decode(memory, address);
     set(memory.p_data, address, encode((byte => old.byte, exp => 0, has_exp => false, perm => old.perm)));
-  end procedure;
+  end;
 
-  procedure set_expected_byte(memory : memory_t; address : natural; expected : byte_t) is
+  procedure
+  set_expected_byte(
+    memory   : memory_t;
+    address  : natural;
+    expected : byte_t
+  ) is
     variable old : memory_data_t;
   begin
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
+    old := decode(memory, address);
     set(memory.p_data, address, encode((byte => old.byte, exp => expected, has_exp => true, perm => old.perm)));
-  end procedure;
+  end;
 
-  impure function get_expected_byte(memory : memory_t; address : natural) return byte_t is
+  impure function
+  get_expected_byte(
+    memory  : memory_t;
+    address : natural
+  ) return byte_t is
   begin
     return get(memory, address, true).exp;
   end;
 
-  procedure set_expected_word(memory : memory_t;
-                              address : natural;
-                              expected : std_logic_vector;
-                              endian : endianness_arg_t := default_endian) is
+  procedure
+  set_expected_word(
+    memory   : memory_t;
+    address  : natural;
+    expected : std_logic_vector;
+    endian   : endianness_arg_t := default_endian
+  ) is
     -- Normalize to downto range to enable std_logic_vector literals which are
     -- 1 to N
     constant word_i : std_logic_vector(expected'length-1 downto 0) := expected;
@@ -353,10 +476,12 @@ package body memory_pkg is
     end case;
   end;
 
-  impure function serialize(word : integer;
-                            bytes_per_word : natural range 1 to 4;
-                            endian : endianness_t) return integer_vector is
-
+  impure function
+  serialize(
+    word           : integer;
+    bytes_per_word : natural range 1 to 4;
+    endian         : endianness_t
+  ) return integer_vector is
     variable result : integer_vector(0 to bytes_per_word-1);
     variable byte : byte_t;
     variable word_i : integer := word;
@@ -376,15 +501,17 @@ package body memory_pkg is
         end loop;
     end case;
     return result;
-  end function;
+  end;
 
-  procedure set_expected_integer(memory : memory_t;
-                                 address : natural;
-                                 expected : integer;
-                                 bytes_per_word : natural range 1 to 4 := 4;
-                                 endian : endianness_arg_t := default_endian) is
-    constant bytes : integer_vector(0 to bytes_per_word-1) := serialize(expected,
-                                                                        bytes_per_word,
+  procedure
+  set_expected_integer(
+    memory         : memory_t;
+    address        : natural;
+    expected       : integer;
+    bytes_per_word : natural range 1 to 4 := 4;
+    endian         : endianness_arg_t := default_endian
+  ) is
+    constant bytes : integer_vector(0 to bytes_per_word-1) := serialize(expected, bytes_per_word,
                                                                         evaluate_endian(memory, endian));
   begin
     for byte_idx in 0 to bytes_per_word-1 loop
@@ -392,7 +519,11 @@ package body memory_pkg is
     end loop;
   end;
 
-  impure function describe_address(memory : memory_t; address : natural) return string is
+  impure function
+  describe_address(
+    memory  : memory_t;
+    address : natural
+  ) return string is
     constant buf : buffer_t := address_to_allocation(memory, address);
 
     impure function describe_buffer return string is
@@ -413,10 +544,13 @@ package body memory_pkg is
             "(" & to_string(base_address(buf)) & " to " & to_string(last_address(buf)) & ")");
   end;
 
-  procedure write_word(memory : memory_t;
-                       address : natural;
-                       word : std_logic_vector;
-                       endian : endianness_arg_t := default_endian) is
+  procedure
+  write_word(
+    memory  : memory_t;
+    address : natural;
+    word    : std_logic_vector;
+    endian  : endianness_arg_t := default_endian
+  ) is
     constant endianness : endianness_t := evaluate_endian(memory, endian);
     -- Normalize to downto range to enable std_logic_vector literals which are
     -- 1 to N
@@ -434,13 +568,15 @@ package body memory_pkg is
                      to_integer(unsigned(word_i(8*idx+7 downto 8*idx))));
         end loop;
     end case;
-  end procedure;
+  end;
 
-
-  impure function read_word(memory : memory_t;
-                            address : natural;
-                            bytes_per_word : positive;
-                            endian : endianness_arg_t := default_endian) return std_logic_vector is
+  impure function
+  read_word(
+    memory         : memory_t;
+    address        : natural;
+    bytes_per_word : positive;
+    endian         : endianness_arg_t := default_endian
+  ) return std_logic_vector is
     constant endianness : endianness_t := evaluate_endian(memory, endian);
     variable result : std_logic_vector(8*bytes_per_word-1 downto 0);
     variable bidx : natural;
@@ -452,34 +588,35 @@ package body memory_pkg is
         when little_endian =>
           bidx := idx;
       end case;
-
       result(8*bidx+7 downto 8*bidx) := std_logic_vector(
-        to_unsigned(read_byte(memory, address + idx), 8));
-
+        to_unsigned(get_byte(memory, address + idx, true), 8));
     end loop;
     return result;
   end;
 
-  procedure write_integer(memory : memory_t;
-                          address : natural;
-                          word : integer;
-                          bytes_per_word : natural range 1 to 4 := 4;
-                          endian : endianness_arg_t := default_endian) is
-
-    constant bytes : integer_vector := serialize(word,
-                                                 bytes_per_word,
+  procedure
+  write_integer(
+    memory         : memory_t;
+    address        : natural;
+    word           : integer;
+    bytes_per_word : natural range 1 to 4 := 4;
+    endian         : endianness_arg_t := default_endian
+  ) is
+    constant bytes : integer_vector := serialize(word, bytes_per_word,
                                                  evaluate_endian(memory, endian));
   begin
     for byte_idx in 0 to bytes_per_word-1 loop
       write_byte(memory, address + byte_idx,
                  bytes(byte_idx));
     end loop;
-  end procedure;
+  end;
 
-  impure function to_vc_interface(memory : memory_t;
-
-                                  -- Override logger, null_logger means no override
-                                  logger : logger_t := null_logger) return memory_t is
+  impure function
+  to_vc_interface(
+    memory : memory_t;
+    -- Override logger, null_logger means no override
+    logger : logger_t := null_logger
+  ) return memory_t is
     variable result : memory_t := memory;
   begin
     if logger /= null_logger then

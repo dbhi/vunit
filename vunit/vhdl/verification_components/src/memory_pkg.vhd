@@ -16,9 +16,11 @@ use work.logger_pkg.all;
 
 package memory_pkg is
 
-  type endianness_arg_t is (little_endian,
-                            big_endian,
-                            default_endian);
+  type endianness_arg_t is (
+    little_endian,
+    big_endian,
+    default_endian
+  );
   subtype endianness_t is endianness_arg_t range little_endian to big_endian;
 
   -- Memory model object
@@ -31,104 +33,189 @@ package memory_pkg is
     p_buffers : integer_vector_ptr_t;
     p_logger : logger_t;
   end record;
-  constant null_memory : memory_t := (p_logger => null_logger,
-                                      p_check_permissions => boolean'low,
-                                      p_default_endian => endianness_t'low,
-                                      others => null_ptr);
+
+  constant null_memory : memory_t := (
+    p_logger            => null_logger,
+    p_check_permissions => boolean'low,
+    p_default_endian    => endianness_t'low,
+    others => null_ptr
+  );
 
   -- Default memory logger
   constant memory_logger : logger_t := get_logger("vunit_lib:memory_pkg");
 
   -- Create a new memory object
-  impure function new_memory(logger : logger_t := memory_logger;
-                             endian : endianness_t := little_endian) return memory_t;
+  impure function
+  new_memory(
+    id     : integer := 0;
+    length : natural := 0;
+    logger : logger_t := memory_logger;
+    endian : endianness_t := little_endian
+  ) return memory_t;
 
   -- Empties the memory by removing all data and permissions
-  procedure clear(memory : memory_t);
+  procedure
+  clear(
+    memory : memory_t
+  );
 
   -- Return the number of allocated bytes in the memory
-  impure function num_bytes(memory : memory_t) return natural;
+  impure function
+  num_bytes(
+    memory : memory_t
+  ) return natural;
 
   -----------------------------------------------------
   -- Memory data read and write functions
   -----------------------------------------------------
-  procedure write_byte(memory : memory_t;
-                       address : natural;
-                       byte : byte_t);
-  impure function read_byte(memory : memory_t;
-                            address : natural) return byte_t;
 
-  procedure write_word(memory : memory_t;
-                       address : natural;
-                       word : std_logic_vector;
-                       endian : endianness_arg_t := default_endian);
+  impure function
+  get_byte(
+    memory  : memory_t;
+    address : natural;
+    perm    : boolean := false)
+  return integer;
 
-  impure function read_word(memory : memory_t;
-                            address : natural;
-                            bytes_per_word : positive;
-                            endian : endianness_arg_t := default_endian) return std_logic_vector;
+  procedure
+  write_byte(
+    memory  : memory_t;
+    address : natural;
+    byte    : byte_t
+  );
+
+  impure function
+  read_byte(
+    memory  : memory_t;
+    address : natural
+  ) return byte_t;
+
+  procedure
+  write_word(
+    memory  : memory_t;
+    address : natural;
+    word    : std_logic_vector;
+    endian  : endianness_arg_t := default_endian
+  );
+
+  impure function
+  read_word(
+    memory         : memory_t;
+    address        : natural;
+    bytes_per_word : positive;
+    endian         : endianness_arg_t := default_endian
+  ) return std_logic_vector;
 
   -- Write integer
-  procedure write_integer(memory : memory_t;
-                          address : natural;
-                          word : integer;
-                          bytes_per_word : natural range 1 to 4 := 4;
-                          endian : endianness_arg_t := default_endian);
+  procedure
+  write_integer(
+    memory         : memory_t;
+    address        : natural;
+    word           : integer;
+    bytes_per_word : natural range 1 to 4 := 4;
+    endian         : endianness_arg_t := default_endian
+  );
 
   -----------------------------------------------------
   -- Memory access permission control functions
   -----------------------------------------------------
-  type permissions_t is (no_access,
-                         write_only,
-                         read_only,
-                         read_and_write);
-  impure function get_permissions(memory : memory_t;
-                                  address : natural) return permissions_t;
-  procedure set_permissions(memory : memory_t;
-                            address : natural;
-                            permissions : permissions_t);
+
+  type permissions_t is (
+    no_access,
+    write_only,
+    read_only,
+    read_and_write
+  );
+
+  impure function
+  get_permissions(
+    memory : memory_t;
+    address : natural
+  ) return permissions_t;
+
+  procedure
+  set_permissions(
+    memory : memory_t;
+    address : natural;
+    permissions : permissions_t
+  );
 
   -----------------------------------------------------
   -- Functions to set memory expected data
   -----------------------------------------------------
-  impure function has_expected_byte(memory : memory_t;
-                                    address : natural) return boolean;
-  procedure clear_expected_byte(memory : memory_t;
-                                address : natural);
-  procedure set_expected_byte(memory : memory_t;
-                              address : natural;
-                              expected : byte_t);
-  procedure set_expected_word(memory : memory_t;
-                              address : natural;
-                              expected : std_logic_vector;
-                              endian : endianness_arg_t := default_endian);
-  procedure set_expected_integer(memory : memory_t;
-                                 address : natural;
-                                 expected : integer;
-                                 bytes_per_word : natural range 1 to 4 := 4;
-                                 endian : endianness_arg_t := default_endian);
-  impure function get_expected_byte(memory : memory_t;
-                                    address : natural) return byte_t;
+
+  impure function
+  has_expected_byte(
+    memory : memory_t;
+    address : natural
+  ) return boolean;
+
+  procedure
+  clear_expected_byte(
+    memory  : memory_t;
+    address : natural
+  );
+
+  procedure
+  set_expected_byte(
+    memory   : memory_t;
+    address  : natural;
+    expected : byte_t
+  );
+
+  procedure
+  set_expected_word(
+    memory   : memory_t;
+    address  : natural;
+    expected : std_logic_vector;
+    endian   : endianness_arg_t := default_endian
+  );
+
+  procedure
+  set_expected_integer(
+    memory         : memory_t;
+    address        : natural;
+    expected       : integer;
+    bytes_per_word : natural range 1 to 4 := 4;
+    endian         : endianness_arg_t := default_endian
+  );
+
+  impure function
+  get_expected_byte(
+    memory : memory_t;
+    address : natural
+  ) return byte_t;
 
   -- Check that all expected bytes within address range was written
   -- with correct value
-  procedure check_expected_was_written(memory : memory_t;
-                                       address : natural;
-                                       num_bytes : natural);
+  procedure
+  check_expected_was_written(
+    memory : memory_t;
+    address : natural;
+    num_bytes : natural
+  );
 
   -- Returns true if all expected bytes within address range was written
   -- with correct value
-  impure function expected_was_written(memory    : memory_t;
-                                       address   : natural;
-                                       num_bytes : natural) return boolean;
+  impure function
+  expected_was_written(
+    memory    : memory_t;
+    address   : natural;
+    num_bytes : natural
+  ) return boolean;
 
   -- Check that all expected bytes within the entire memory was written
   -- with correct value
-  procedure check_expected_was_written(memory : memory_t);
+  procedure
+  check_expected_was_written(
+    memory : memory_t
+  );
 
   -- Returns true if all expected bytes within the entire memory was written
   -- with correct value
-  impure function expected_was_written(memory : memory_t) return boolean;
+  impure function
+  expected_was_written(
+    memory : memory_t
+  ) return boolean;
 
   -----------------------------------------------------
   -- Memory buffer allocation
@@ -142,54 +229,83 @@ package memory_pkg is
     p_address : natural;
     p_num_bytes : natural;
   end record;
-  constant null_buffer : buffer_t := (p_memory_ref => null_memory,
-                                      p_name => null_string_ptr,
-                                      p_address => natural'low,
-                                      p_num_bytes => natural'low);
+
+  constant null_buffer : buffer_t := (
+    p_memory_ref => null_memory,
+    p_name => null_string_ptr,
+    p_address => natural'low,
+    p_num_bytes => natural'low
+  );
 
   -- Allocate a buffer
-  impure function allocate(memory : memory_t;
-                           num_bytes : natural;
-                           name : string := "";
-                           alignment : positive := 1;
-                           permissions : permissions_t := read_and_write) return buffer_t;
+  impure function
+  allocate(
+    memory      : memory_t;
+    num_bytes   : natural;
+    name        : string := "";
+    alignment   : positive := 1;
+    permissions : permissions_t := read_and_write
+  ) return buffer_t;
+
   impure function name(buf : buffer_t) return string;
   impure function num_bytes(buf : buffer_t) return natural;
   impure function base_address(buf : buffer_t) return natural;
   impure function last_address(buf: buffer_t) return natural;
 
   -- Check that all expected bytes was written with correct value in buffer
-  procedure check_expected_was_written(buf : buffer_t);
+  procedure
+  check_expected_was_written(
+    buf : buffer_t
+  );
 
   -- Returns true if all expected bytes was written with correct value in buffer
-  impure function expected_was_written(buf : buffer_t) return boolean;
+  impure function
+  expected_was_written(
+    buf : buffer_t
+  ) return boolean;
 
   -- Return a string describing the address with name of allocation and
   -- permission settings
-  impure function describe_address(memory : memory_t;
-                                   address : natural) return string;
+  impure function
+  describe_address(
+    memory  : memory_t;
+    address : natural
+  ) return string;
 
   -- Return a reference to the memory object that can be used in a verification
   -- component. The verification component can use its own logger and
   -- permissions should be checked.
-  impure function to_vc_interface(memory : memory_t;
-
-                                  -- Override logger, null_logger means no override
-                                  logger : logger_t := null_logger) return memory_t;
+  impure function
+  to_vc_interface(
+    memory : memory_t;
+    -- Override logger, null_logger means no override
+    logger : logger_t := null_logger
+  ) return memory_t;
 
   -- Only perform checks related to address
   -- Check for access permissions and address out of range
-  impure function check_address(memory : memory_t; address : natural;
-                                reading : boolean;
-                                check_permissions : boolean := false) return boolean;
+  impure function
+  check_address(
+    memory            : memory_t; address : natural;
+    reading           : boolean;
+    check_permissions : boolean := false
+  ) return boolean;
 
   -- Only perform checks related to write_byte data without performing the write
   -- Does not check address
-  impure function check_write_data(memory : memory_t;
-                                   address : natural;
-                                   byte : byte_t) return boolean;
+  impure function
+  check_write_data(
+    memory  : memory_t;
+    address : natural;
+    byte    : byte_t
+  ) return boolean;
 
   -- Perform write of one byte without running any address or data checks
-  procedure write_byte_unchecked(memory : memory_t; address : natural; byte : byte_t);
+  procedure
+  write_byte_unchecked(
+    memory  : memory_t;
+    address : natural;
+    byte    : byte_t
+  );
 
 end package;
