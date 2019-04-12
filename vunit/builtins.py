@@ -78,41 +78,49 @@ class Builtins(object):
         """
         self._add_files(join(VHDL_PATH, "data_types", "src", "*.vhd"))
 
-        use_ext = {'string': False}
-        files = {'string': None}
+        use_ext = {
+            'string': False,
+            'integer': False
+        }
+        files = {
+            'string': None,
+            'integer': None
+        }
 
         if external is not None:
-            for ind in external:
-                val = external[ind]
+            for key, val in external.items():
                 if isinstance(val, bool):
-                    use_ext[ind] = val
+                    use_ext[key] = val
                 else:
-                    use_ext[ind] = True
-                    files[ind] = val
+                    use_ext[key] = True
+                    files[key] = val
 
-        for ind in use_ext:
-            if use_ext[ind] and simulator_check(lambda simclass: not simclass.supports_vhpi()):
+        for _, val in use_ext.items():
+            if val and simulator_check(lambda simclass: not simclass.supports_vhpi()):
                 raise RuntimeError("the selected simulator does not support VHPI; must use non-VHPI packages...")
 
         ext_path = join(VHDL_PATH, "data_types", "src", "external")
 
-        def default_pkg(cond, type_str):
+        def default_files(cond, type_str):
             """
             Return name of VHDL file with default VHPIDIRECT foreign declarations.
             """
             nostr = 'no'
             if cond:
                 nostr = ''
-            return join(ext_path, 'external_' + type_str + '-' + nostr + 'vhpi.vhd')
-
-        if not files['string']:
-            files['string'] = [
-                default_pkg(use_ext['string'], 'string'),
-                join(ext_path, "external_string-body.vhd")
+            return [
+                join(ext_path, 'external_' + type_str + '-' + nostr + 'vhpi.vhd'),
+                join(ext_path, 'external_' + type_str + '-body.vhd')
             ]
 
-        for ind in files:
-            for name in files[ind]:
+        if not files['string']:
+            files['string'] = default_files(use_ext['string'], 'string')
+
+        if not files['integer']:
+            files['integer'] = default_files(use_ext['integer'], 'integer_vector')
+
+        for _, val in files.items():
+            for name in val:
                 self._add_files(name)
 
     def _add_array_util(self):

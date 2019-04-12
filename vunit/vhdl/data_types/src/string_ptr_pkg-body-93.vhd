@@ -86,9 +86,9 @@ package body string_ptr_pkg is
           mode   => internal,
           length => 0
         );
-      reallocate_ptrs(st.ptrs, st.ptr);
-      st.ptrs(st.ptr) := new vec_t'(1 to length => value);
-      st.ptr := st.ptr + 1;
+        reallocate_ptrs(st.ptrs, st.ptr);
+        st.ptrs(st.ptr) := new vec_t'(1 to length => value);
+        st.ptr := st.ptr + 1;
       when extacc =>
         st.ids(st.id) := (
           id     => st.eptr,
