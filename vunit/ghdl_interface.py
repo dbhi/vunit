@@ -211,19 +211,33 @@ class GHDLInterface(SimulatorInterface):
         cmd += ['--work=%s' % config.library_name]
         cmd += ['--workdir=%s' % self._project.get_library(config.library_name).directory]
         cmd += ['-P%s' % lib.directory for lib in self._project.get_libraries()]
+
+        bin_path = join(
+            output_path,
+            "%s-%s" % (config.entity_name, config.architecture_name)
+        )
         if self._has_output_flag():
-            cmd += ['-o', join(output_path, "%s-%s" % (config.entity_name,
-                                                       config.architecture_name))]
+            cmd += ['-o', bin_path]
         cmd += config.sim_options.get("ghdl.elab_flags", [])
         cmd += [config.entity_name, config.architecture_name]
 
+        sim = config.sim_options.get("ghdl.sim_flags", [])
+        for name, value in config.generics.items():
+            sim += ['-g%s=%s' % (name, value)]
+        sim += ['--assert-level=%s' % config.vhdl_assert_stop_level]
+        if config.sim_options.get("disable_ieee_warnings", False):
+            sim += ["--ieee-asserts=disable"]
+
         if not ghdl_e:
-            cmd += config.sim_options.get("ghdl.sim_flags", [])
-            for name, value in config.generics.items():
-                cmd += ['-g%s=%s' % (name, value)]
-            cmd += ['--assert-level=%s' % config.vhdl_assert_stop_level]
-            if config.sim_options.get("disable_ieee_warnings", False):
-                cmd += ["--ieee-asserts=disable"]
+            cmd += sim
+        else:
+            try:
+                os.makedirs(output_path, mode=0o777)
+            except OSError:
+                pass
+            with open(join(output_path, 'args.txt'), 'w') as fname:
+                for item in [bin_path] + sim:
+                    fname.write("%s\n" % item)
 
         return cmd
 
