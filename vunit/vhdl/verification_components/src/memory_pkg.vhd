@@ -9,8 +9,9 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-use work.integer_vector_ptr_pkg.all;
 use work.string_ptr_pkg.all;
+use work.byte_vector_ptr_pkg.all;
+use work.integer_vector_ptr_pkg.all;
 use work.logger_pkg.all;
 
 package memory_pkg is
@@ -27,20 +28,26 @@ package memory_pkg is
     p_default_endian : endianness_t;
     p_check_permissions : boolean;
     p_data : integer_vector_ptr_t;
+    p_bytes : byte_vector_ptr_t;
     p_buffers : integer_vector_ptr_t;
     p_logger : logger_t;
   end record;
   constant null_memory : memory_t := (p_logger => null_logger,
                                       p_check_permissions => boolean'low,
                                       p_default_endian => endianness_t'low,
+                                      p_bytes => null_string_ptr,
                                       others => null_ptr);
 
   -- Default memory logger
   constant memory_logger : logger_t := get_logger("vunit_lib:memory_pkg");
 
   -- Create a new memory object
-  impure function new_memory(logger : logger_t := memory_logger;
-                             endian : endianness_t := little_endian) return memory_t;
+  impure function new_memory (
+    len    : natural := 0;
+    id     : integer := 0;
+    logger : logger_t := memory_logger;
+    endian : endianness_t := little_endian
+  ) return memory_t;
 
   -- Empties the memory by removing all data and permissions
   procedure clear(memory : memory_t);
@@ -52,6 +59,7 @@ package memory_pkg is
   -- Memory data read and write functions
   -----------------------------------------------------
   subtype byte_t is integer range 0 to 255;
+
   procedure write_byte(memory : memory_t;
                        address : natural;
                        byte : byte_t);
