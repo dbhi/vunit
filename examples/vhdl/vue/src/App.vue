@@ -28,6 +28,9 @@
     <hls_master
       v-if="loaded && (name=='hls_master')"
       :data.sync="data"/>
+    <hsconv2
+      v-if="loaded && (name=='hsconv2')"
+      :data.sync="data"/>
   </div>
 </template>
 
@@ -47,13 +50,15 @@ import NavBar from "@/components/NavBar.vue";
 
 import external_buffer from "@/cases/external_buffer.vue";
 import hls_master from "@/cases/hls_master.vue";
+import hsconv2 from "@/cases/hsconv2.vue";
 
 export default {
   name: 'app',
   components: {
     NavBar,
     external_buffer,
-    hls_master
+    hls_master,
+    hsconv2
   },
   data() {
     return {
