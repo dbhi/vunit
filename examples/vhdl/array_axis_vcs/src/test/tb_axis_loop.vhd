@@ -36,15 +36,19 @@ architecture tb of tb_axis_loop is
   constant clk_period : time    := 20 ns;
   constant data_width : natural := 32;
 
+  constant block_length : natural := 256*128*4;
+
   -- AXI4Stream Verification Components
 
   constant master_axi_stream : axi_stream_master_t := new_axi_stream_master(
     data_length => data_width,
-    stall_config => new_stall_config(0.05, 1, 10)
+    stall_config => new_stall_config(0.05, 1, 10),
+    actor => new_actor(inbox_size => 64, outbox_size => 64)
   );
   constant slave_axi_stream  : axi_stream_slave_t  := new_axi_stream_slave(
     data_length => data_width,
-    stall_config => new_stall_config(0.05, 1, 10)
+    stall_config => new_stall_config(0.05, 1, 10),
+    actor => new_actor(inbox_size => 64, outbox_size => 64)
   );
 
   -- tb signals and variables
@@ -89,12 +93,16 @@ begin
 
     info("Sending m_I of size " & to_string(height(m_I)) & "x" & to_string(width(m_I)) & " to UUT...");
 
-    for y in 0 to height(m_I)-1 loop
-      for x in 0 to width(m_I)-1 loop
-        wait until rising_edge(clk);
-        if x = width(m_I)-1 then last := '1'; else last := '0'; end if;
-        push_axi_stream(net, master_axi_stream, std_logic_vector(to_signed(get(m_I, x, y), data_width)) , tlast => last);
-      end loop;
+    --for y in 0 to height(m_I)-1 loop
+    --  for x in 0 to width(m_I)-1 loop
+    --    wait until rising_edge(clk);
+    --    if x = width(m_I)-1 then last := '1'; else last := '0'; end if;
+    --    push_axi_stream(net, master_axi_stream, std_logic_vector(to_signed(get(m_I, x, y), data_width)) , tlast => last);
+    --  end loop;
+    --end loop;
+
+    for y in 0 to block_length-1 loop
+      push_axi_stream(net, master_axi_stream, std_logic_vector(to_signed(0, data_width)) , tlast => last);
     end loop;
 
     info("m_I sent!");
@@ -113,14 +121,18 @@ begin
 
     info("Receiving m_O of size " & to_string(height(m_O)) & "x" & to_string(width(m_O)) & " from UUT...");
 
-    for y in 0 to height(m_O)-1 loop
-      for x in 0 to width(m_O)-1 loop
-        pop_axi_stream(net, slave_axi_stream, tdata => o, tlast => last);
-        if (x = width(m_O)-1) and (last='0') then
-          error("Something went wrong. Last misaligned!");
-        end if;
-        set(m_O, x, y, to_integer(signed(o)));
-      end loop;
+    --for y in 0 to height(m_O)-1 loop
+    --  for x in 0 to width(m_O)-1 loop
+    --    pop_axi_stream(net, slave_axi_stream, tdata => o, tlast => last);
+    --    if (x = width(m_O)-1) and (last='0') then
+    --      error("Something went wrong. Last misaligned!");
+    --    end if;
+    --    set(m_O, x, y, to_integer(signed(o)));
+    --  end loop;
+    --end loop;
+
+    for y in 0 to block_length-1 loop
+      pop_axi_stream(net, slave_axi_stream, tdata => o, tlast => last);
     end loop;
 
     info("m_O read!");
