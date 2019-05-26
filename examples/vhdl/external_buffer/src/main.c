@@ -21,10 +21,8 @@ or tb_ext_integer_vector.vhd
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "vhpidirect_user.h"
 
-extern int ghdl_main (int argc, char **argv);
-
-uint8_t *D[1];
 const uint32_t length = 5;
 
 /*
@@ -79,44 +77,4 @@ int main(int argc, char **argv) {
 
   // Start the simulation
   return ghdl_main(argc, argv);
-}
-
-// External string/byte_vector through access (mode<0)
-
-void set_string_ptr(uint8_t id, uint8_t *p) {
-  D[id] = p;
-}
-
-uintptr_t get_string_ptr(uint8_t id) {
-  return (uintptr_t)D[id];
-}
-
-// External string/byte_vector through functions (mode>0)
-
-void write_char(uint8_t id, uint32_t i, uint8_t v ) {
-  D[id][i] = v;
-}
-
-uint8_t read_char(uint8_t id, uint32_t i) {
-  return D[id][i];
-}
-
-// External integer_vector through access (mode<0)
-
-void set_intvec_ptr(uint8_t id, uintptr_t *p) {
-  D[id] = (uint8_t*)p;
-}
-
-uintptr_t get_intvec_ptr(uint8_t id) {
-  return (uintptr_t)D[id];
-}
-
-// External integer_vector through functions (mode>0)
-
-void write_integer(uint8_t id, uint32_t i, int32_t v) {
-  ((int32_t*)D[id])[i] = v;
-}
-
-int32_t read_integer(uint8_t id, uint32_t i) {
-  return ((int32_t*)D[id])[i];
 }

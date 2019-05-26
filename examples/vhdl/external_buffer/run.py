@@ -28,9 +28,11 @@ simulation.
 from vunit import VUnit
 from os import popen
 from os.path import join, dirname
+import inspect
 
 
 src_path = join(dirname(__file__), 'src')
+ext_srcs = join(dirname(inspect.getfile(VUnit)), 'vhdl', 'data_types', 'src', 'external')
 
 # Compile C applications to an objects
 c_iobj = join(src_path, 'imain.o')
@@ -39,6 +41,7 @@ c_bobj = join(src_path, 'bmain.o')
 print(popen(' '.join([
     'gcc', '-fPIC',
     '-DTYPE=int32_t',
+    '-I', ext_srcs,
     '-c', join(src_path, 'main.c'),
     '-o', c_iobj
 ])).read())
@@ -46,6 +49,7 @@ print(popen(' '.join([
 print(popen(' '.join([
     'gcc', '-fPIC',
     '-DTYPE=uint8_t',
+    '-I', ext_srcs,
     '-c', join(src_path, 'main.c'),
     '-o', c_bobj
 ])).read())
@@ -58,9 +62,9 @@ lib.add_source_files(join(src_path, '*.vhd'))
 
 # Add the C object to the elaboration of GHDL
 for tb in lib.get_test_benches(pattern='*tb_ext*', allow_empty=False):
-    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_bobj], overwrite=True)
+    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_bobj, '-Wl,-Wl,--version-script=' + join(ext_srcs, 'grt.ver')], overwrite=True)
 for tb in lib.get_test_benches(pattern='*tb_ext*_integer*', allow_empty=False):
-    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_iobj], overwrite=True)
+    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_iobj, '-Wl,-Wl,--version-script=' + join(ext_srcs, 'grt.ver')], overwrite=True)
 
 if __name__ == '__main__':
     ui.main()
