@@ -25,6 +25,9 @@
     <external_buffer
       v-if="loaded && (name=='external_buffer')"
       :data.sync="data"/>
+    <hls_master
+      v-if="loaded && (name=='hls_master')"
+      :data.sync="data"/>
   </div>
 </template>
 
@@ -43,12 +46,14 @@ Vue.use(Buefy);
 import NavBar from "@/components/NavBar.vue";
 
 import external_buffer from "@/cases/external_buffer.vue";
+import hls_master from "@/cases/hls_master.vue";
 
 export default {
   name: 'app',
   components: {
     NavBar,
-    external_buffer
+    external_buffer,
+    hls_master
   },
   data() {
     return {
