@@ -49,7 +49,7 @@ if '--build' in argv:
     argv.remove('--build')
     build_only = True
 
-# Compile C applications to an objects
+# Compile C applications to objects
 c_iobj = join(src_path, 'imain.o')
 c_bobj = join(src_path, 'bmain.o')
 

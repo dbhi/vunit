@@ -29,16 +29,26 @@ ghdl = dlopen(args[0])
 
 data = [111, 122, 133, 144, 155]
 
-buf = byte_buf(data + [0 for x in range(2*len(data))])
+buf = [[] for c in range(2)]
+buf[1] = byte_buf(data + [0 for x in range(2*len(data))])
 
-ghdl.set_string_ptr(0, buf)
+buf[0] = int_buf([
+    -2**31+10,
+    -2**31,
+    3,         # clk_step
+    0,         # update
+    len(data)  # block_length
+])
 
-for i, v in enumerate(read_byte_buf(buf)):
+for x, v in enumerate(buf):
+    ghdl.set_string_ptr(x, v)
+
+for i, v in enumerate(read_byte_buf(buf[1])):
     print("py " + str(i) + ": " + str(v))
 
 ghdl.ghdl_main(len(xargs)-1, xargs)
 
-for i, v in enumerate(read_byte_buf(buf)):
+for i, v in enumerate(read_byte_buf(buf[1])):
     print("py " + str(i) + ": " + str(v))
 
 dlclose(ghdl)
