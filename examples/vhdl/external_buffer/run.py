@@ -26,13 +26,28 @@ simulation.
 """
 
 from vunit import VUnit
+from sys import argv
 from os import popen
 from os.path import join, dirname
 import inspect
+from shutil import copyfile
 
 
+# TODO https://github.com/VUnit/vunit/issues/478
+def preconf(output_path):
+    global opath
+    opath = output_path
+    return True
+
+
+global opath
+opath = ''
 src_path = join(dirname(__file__), 'src')
 ext_srcs = join(dirname(inspect.getfile(VUnit)), 'vhdl', 'data_types', 'src', 'external')
+build_only = False
+if '--build' in argv:
+    argv.remove('--build')
+    build_only = True
 
 # Compile C applications to an objects
 c_iobj = join(src_path, 'imain.o')
@@ -66,5 +81,17 @@ for tb in lib.get_test_benches(pattern='*tb_ext*', allow_empty=False):
 for tb in lib.get_test_benches(pattern='*tb_ext*_integer*', allow_empty=False):
     tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_iobj, '-Wl,-Wl,--version-script=' + join(ext_srcs, 'grt.ver')], overwrite=True)
 
+for tb in lib.get_test_benches(pattern='*', allow_empty=False):
+    tb.set_pre_config(preconf)
+
 if __name__ == '__main__':
-    ui.main()
+    if build_only:
+        ui.set_sim_option("ghdl.elab_e", True)
+        ui._args.elaborate = True
+    try:
+        ui.main()
+    except SystemExit as exc:
+        if exc.code is not 0:
+            exit(exc.code)
+    if build_only and len(opath):
+        copyfile(join(opath, 'ghdl', 'args.txt'), join(dirname(__file__), 'args.txt'))
