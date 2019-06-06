@@ -32,22 +32,35 @@ from os.path import join, dirname
 
 src_path = join(dirname(__file__), 'src')
 
-c_obj = join(src_path, 'main.o')
-# Compile C application to an object
+# Compile C applications to an objects
+c_iobj = join(src_path, 'imain.o')
+c_bobj = join(src_path, 'bmain.o')
+
 print(popen(' '.join([
     'gcc', '-fPIC',
+    '-DTYPE=int32_t',
     '-c', join(src_path, 'main.c'),
-    '-o', c_obj
+    '-o', c_iobj
 ])).read())
 
-# Enable the external feature for strings
-ui = VUnit.from_argv(vhdl_standard='2008', external={'string': True})
+print(popen(' '.join([
+    'gcc', '-fPIC',
+    '-DTYPE=uint8_t',
+    '-c', join(src_path, 'main.c'),
+    '-o', c_bobj
+])).read())
+
+# Enable the external feature for strings/byte_vectors and integer_vectors
+ui = VUnit.from_argv(vhdl_standard='2008', external={'string': True, 'integer': True})
 
 lib = ui.add_library('lib')
 lib.add_source_files(join(src_path, '*.vhd'))
 
 # Add the C object to the elaboration of GHDL
-ui.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_obj])
+for tb in lib.get_test_benches(pattern='*tb_ext*', allow_empty=False):
+    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_bobj], overwrite=True)
+for tb in lib.get_test_benches(pattern='*tb_ext*_integer*', allow_empty=False):
+    tb.set_sim_option('ghdl.elab_flags', ['-Wl,' + c_iobj], overwrite=True)
 
 if __name__ == '__main__':
     ui.main()
