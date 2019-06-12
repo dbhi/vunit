@@ -76,7 +76,6 @@ class Builtins(object):
         :param external: struct to select whether to enable external models for 'string'. Allowed values are:
                          None, {'string': False}, {'string': True} or {'string': ['path/to/custom/file']}.
         """
-        self._add_files(join(VHDL_PATH, "data_types", "src", "types", "*.vhd"))
         self._add_files(join(VHDL_PATH, "data_types", "src", "*.vhd"))
 
         use_ext = {'string': False}
