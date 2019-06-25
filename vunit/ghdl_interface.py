@@ -10,7 +10,7 @@ Interface for GHDL simulator
 
 from __future__ import print_function
 import logging
-from os.path import exists, join, abspath
+from os.path import dirname, exists, join, abspath
 import os
 import subprocess
 import shlex
@@ -41,7 +41,8 @@ class GHDLInterface(SimulatorInterface):
     sim_options = [
         ListOfStringOption("ghdl.sim_flags"),
         ListOfStringOption("ghdl.elab_flags"),
-        StringOption("ghdl.gtkwave_script.gui"),
+        StringOption("ghdl.gtkwave.script"),
+        BooleanOption("ghdl.gtkwave.auto"),
         BooleanOption("ghdl.elab_e")
     ]
 
@@ -271,9 +272,16 @@ class GHDLInterface(SimulatorInterface):
         if self._gui and not elaborate_only:
             cmd = ["gtkwave"] + shlex.split(self._gtkwave_args) + [data_file_name]
 
-            init_file = config.sim_options.get(self.name + ".gtkwave_script.gui", None)
+            init_file = config.sim_options.get(self.name + ".gtkwave.script", None)
+            init_auto = config.sim_options.get(self.name + ".gtkwave.auto", False)
             if init_file is not None:
-                cmd += ["--script", "\"{}\"".format(abspath(init_file))]
+                if init_auto:
+                    wave_init = join(output_path, 'ghdl', 'gtkwave.tcl')
+                    with open(wave_init, 'w') as modified: modified.write(
+                        open(init_file, 'r').read() + open(join(dirname(__file__), 'vhdl', 'gtkwave.tcl'), 'r').read()
+                    )
+                    init_file = wave_init
+                cmd += ["--script", "{}".format(abspath(init_file))]
 
             stdout.write("%s\n" % " ".join(cmd))
             subprocess.call(cmd)
